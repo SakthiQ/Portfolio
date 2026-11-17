@@ -14,7 +14,7 @@ export const site = {
   github: "https://github.com/SakthiQ",
   githubUser: "SakthiQ",
   linkedin: "https://www.linkedin.com/in/sakthinarayan-v",
-  resume: "", // set to "/resume.pdf" once public/resume.pdf is added
+  resume: "/Sakthi_Narayan_V_Resume.pdf", // file lives in public/
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
 };
 

@@ -22,4 +22,7 @@ Email sakthinarayanvinodhkannan@gmail.com, call +91 8148868038, or connect on Li
 Yes. Sakthi was an AI Intern at Hexaware Technologies (May–July 2026), building 4+ AI agents on Oracle Fusion Cloud AI Agent Studio for inventory management and procurement, and an SAP Intern at Wheels India Limited (June 2025).
 
 **What is Sakthi's CGPA or what were their school marks?**
-Grades aren't published on this site. Contact Sakthi directly for an official transcript or resume.
+Grades aren't listed on the site pages, but they're in Sakthi's resume, which you can download from the Contact section (or press Ctrl/Cmd+K and choose "Open resume").
+
+**Where can I get Sakthi's resume?**
+Download it from the Contact section, or press Ctrl/Cmd+K and choose "Open resume".
