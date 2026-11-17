@@ -41,12 +41,17 @@ const COMMANDS: Record<string, string> = {
 
 const SHORTCUTS = ["whoami", "about", "skills", "experience", "timeline", "resume", "cv", "contact", "email", "linkedin", "github"];
 
-// Compact, grouped help so it fits in the terminal window.
-const HELP_GROUPS: [string, string][] = [
-  ["about me", "whoami  projects  experience  resume  contact  email  linkedin  github"],
-  ["files", "ls  cd  pwd  cat  tree  open"],
-  ["site", "filter <tag>  clear  history"],
-  ["more", "echo  date  uname  neofetch  man <command>"],
+// Short, explained help for visitors who don't know a shell. Each command is clickable:
+// `fill` puts it in the input to finish typing, otherwise it runs straight away.
+const HELP_ITEMS: { cmd: string; desc: string; fill?: string }[] = [
+  { cmd: "projects", desc: "see all my projects" },
+  { cmd: "open <name>", desc: "read a project's full case study", fill: "open " },
+  { cmd: "resume", desc: "open my resume (PDF)" },
+  { cmd: "contact", desc: "email, phone and LinkedIn" },
+  { cmd: "experience", desc: "internships, certification, education" },
+  { cmd: "filter <tag>", desc: "show projects by tech, e.g. filter python", fill: "filter " },
+  { cmd: "ls", desc: "explore my files (cd and cat work too)" },
+  { cmd: "clear", desc: "clear the screen" },
 ];
 const READ_ONLY = ["rm", "mv", "cp", "mkdir", "rmdir", "touch", "chmod", "chown", "ln", "nano", "vi", "vim"];
 const AI_MEMORY = 10; // past messages sent with each question, so follow-ups make sense
@@ -97,6 +102,7 @@ export function Terminal() {
   const [aiHistory, setAiHistory] = useState<ChatTurn[]>([]);
   const [live, setLive] = useState<LiveReply | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const pickRef = useRef<(value: string, fill: boolean) => void>(() => {});
   const router = useRouter();
   const reduce = useReducedMotion();
   const root = useMemo(() => buildFs(projects), [projects]);
@@ -290,17 +296,33 @@ export function Terminal() {
     }
 
     switch (key) {
-      case "help":
+      case "help": {
+        const all = args[0] === "all" || args[0] === "-a";
+        const items = all ? Object.entries(COMMANDS).map(([c, d]) => ({ cmd: c, desc: d, fill: undefined as string | undefined })) : HELP_ITEMS;
         print(
-          ...HELP_GROUPS.map(([group, cmds]) => (
-            <span key={group} className="block whitespace-pre-wrap">
-              {faint(group.padEnd(10))}
-              <span className="text-fg">{cmds}</span>
+          faint(all ? "every command (click one to run it):" : "try one of these (click to run):"),
+          ...items.map(({ cmd, desc, fill }) => (
+            <span key={cmd} className="flex gap-3">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  pickRef.current(fill ?? cmd, Boolean(fill));
+                }}
+                className="w-[13ch] shrink-0 text-left text-fg underline-offset-4 hover:text-accent hover:underline"
+              >
+                {cmd}
+              </button>
+              {faint(desc)}
             </span>
           )),
-          faint("man <command> explains one · anything else you type goes to my AI"),
+          <span key="ai" className="text-accent">
+            or just type a question, and my AI will answer.
+          </span>,
+          ...(all ? [] : [faint("help all lists every command")]),
         );
         return;
+      }
       case "ls": {
         const targets = paths.length ? paths : ["."];
         targets.forEach((t) => {
@@ -698,6 +720,21 @@ export function Terminal() {
     if (input.trim()) setHistory((h) => [input.trim(), ...h].slice(0, 50));
     setHistIdx(-1);
     setInput("");
+  };
+
+  // Clicking a command in `help`: run it, or put it in the input to finish typing.
+  // Kept in a ref so old help output always uses the current terminal state.
+  pickRef.current = (value: string, fill: boolean) => {
+    if (live) return;
+    if (fill) {
+      setInput(value);
+      inputRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    exec(value);
+    setHistory((h) => [value, ...h].slice(0, 50));
+    setHistIdx(-1);
+    inputRef.current?.focus({ preventScroll: true });
   };
 
   return (
