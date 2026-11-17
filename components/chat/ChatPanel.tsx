@@ -162,7 +162,7 @@ export function ChatPanel({ variant = "widget" }: { variant?: "widget" | "page" 
         </div>
       </header>
 
-      <div ref={listRef} className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite">
+      <div ref={listRef} className="term-scroll flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite">
         {messages.length === 0 ? (
           <div className="space-y-4">
             <div className="rounded-lg border border-line bg-surface-2/50 p-4">
@@ -212,7 +212,7 @@ export function ChatPanel({ variant = "widget" }: { variant?: "widget" | "page" 
             maxLength={recruiter ? 5500 : 1500}
             placeholder={recruiter ? "Paste the job description…" : "Ask anything about Sakthi…"}
             aria-label="Message"
-            className="max-h-40 flex-1 resize-none bg-transparent py-0.5 text-sm text-fg outline-none placeholder:text-faint"
+            className="chat-input max-h-40 flex-1 resize-none bg-transparent py-0.5 text-sm text-fg outline-none placeholder:text-faint"
           />
           {streaming ? (
             <button type="button" onClick={stop} className="grid size-8 place-items-center rounded-lg bg-surface text-fg hover:bg-line" aria-label="Stop">
@@ -229,18 +229,18 @@ export function ChatPanel({ variant = "widget" }: { variant?: "widget" | "page" 
             </button>
           )}
         </div>
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setRecruiter((r) => !r)}
             aria-pressed={recruiter}
-            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs transition ${
+            className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 font-mono text-xs transition ${
               recruiter ? "bg-amber/15 text-amber" : "text-faint hover:text-muted"
             }`}
           >
             <Briefcase size={12} aria-hidden /> Recruiter mode
           </button>
-          <span className="font-mono text-[11px] text-faint">Enter to send · Shift+Enter for new line</span>
+          <span className="truncate font-mono text-[11px] text-faint">Shift+Enter: new line</span>
         </div>
       </form>
     </div>

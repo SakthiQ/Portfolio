@@ -63,8 +63,9 @@ body {
   border-radius: 4px;
 }
 
-/* The hero terminal shows its own blinking caret instead of a focus box */
-.term-input:focus-visible {
+/* These inputs sit inside boxes that already highlight on focus, so skip the extra focus ring */
+.term-input:focus-visible,
+.chat-input:focus-visible {
   outline: none;
 }
 .term-scroll {
