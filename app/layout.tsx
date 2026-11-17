@@ -9,6 +9,7 @@ import { CursorGlow } from "@/components/CursorGlow";
 import { Footer } from "@/components/Footer";
 import { getProjectSummaries } from "@/lib/content";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -43,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ChatWidget />
         </ChatProvider>
         <Analytics />
-
+        <SpeedInsights />
       </body>
     </html>
   );
