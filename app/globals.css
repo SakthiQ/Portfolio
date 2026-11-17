@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070a0f;
+  --color-surface: #0d1219;
+  --color-surface-2: #121a24;
+  --color-line: #1f2a37;
+  --color-fg: #e6edf3;
+  --color-muted: #8b98a9;
+  --color-faint: #5b6879;
+  --color-accent: #4ade80;
+  --color-accent-dim: #22c55e33;
+  --color-cyan: #22d3ee;
+  --color-amber: #fbbf24;
+  --color-rose: #fb7185;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --animate-blink: blink 1.1s steps(1) infinite;
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Decorative glows and tooltips must never cause sideways scrolling */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* Faint grid behind the page */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at top, black 30%, transparent 75%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Markdown body for case studies and chat replies */
+.prose-term {
+  line-height: 1.75;
+  color: var(--color-fg);
+}
+.prose-term h2 {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  color: var(--color-accent);
+  margin: 2.25rem 0 0.75rem;
+}
+.prose-term h2::before {
+  content: "## ";
+  color: var(--color-faint);
+}
+.prose-term h3 {
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+}
+.prose-term p {
+  margin: 0.75rem 0;
+  color: #c9d3de;
+}
+.prose-term ul,
+.prose-term ol {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  color: #c9d3de;
+}
+.prose-term ul {
+  list-style: none;
+  padding-left: 0;
+}
+.prose-term ul > li {
+  position: relative;
+  padding-left: 1.25rem;
+  margin: 0.4rem 0;
+}
+.prose-term ul > li::before {
+  content: "›";
+  position: absolute;
+  left: 0.2rem;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+}
+.prose-term ol {
+  list-style: decimal;
+}
+.prose-term strong {
+  color: var(--color-fg);
+  font-weight: 600;
+}
+.prose-term a {
+  color: var(--color-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-term code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+.prose-term pre {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 0.9rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.prose-term pre code {
+  border: 0;
+  padding: 0;
+  background: none;
+}
+.prose-term table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 1rem 0;
+}
+.prose-term th,
+.prose-term td {
+  border: 1px solid var(--color-line);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.prose-term > :first-child {
+  margin-top: 0;
+}
+.prose-term > :last-child {
+  margin-bottom: 0;
+}
+
+/* Compact variant inside chat bubbles */
+.prose-chat {
+  line-height: 1.6;
+  font-size: 0.925rem;
+}
+.prose-chat p,
+.prose-chat ul,
+.prose-chat ol {
+  margin: 0.4rem 0;
+}
+.prose-chat h2 {
+  font-size: 1rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
