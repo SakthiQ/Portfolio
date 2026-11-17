@@ -28,10 +28,26 @@ const COMMANDS: Record<string, string> = {
   neofetch: "system summary",
   man: "help for one command",
   ask: "ask the AI (or just type normally)",
-  github: "open the GitHub profile",
+  projects: "list projects (--featured or -f for the highlights)",
+  experience: "internships, certification, education (alias: timeline)",
+  resume: "open the resume PDF (alias: cv)",
   contact: "show contact details",
+  email: "print the email address and copy it",
+  linkedin: "open the LinkedIn profile",
+  github: "open the GitHub profile",
+  filter: "filter the projects grid by tag (filter python)",
   exit: "leave the shell",
 };
+
+const SHORTCUTS = ["whoami", "about", "skills", "experience", "timeline", "resume", "cv", "contact", "email", "linkedin", "github"];
+
+// Compact, grouped help so it fits in the terminal window.
+const HELP_GROUPS: [string, string][] = [
+  ["about me", "whoami  projects  experience  resume  contact  email  linkedin  github"],
+  ["files", "ls  cd  pwd  cat  tree  open"],
+  ["site", "filter <tag>  clear  history"],
+  ["more", "echo  date  uname  neofetch  man <command>"],
+];
 const READ_ONLY = ["rm", "mv", "cp", "mkdir", "rmdir", "touch", "chmod", "chown", "ln", "nano", "vi", "vim"];
 const AI_MEMORY = 10; // past messages sent with each question, so follow-ups make sense
 
@@ -97,6 +113,11 @@ export function Terminal() {
 
   const here = displayPath(cwd);
   const featured = projects.filter((p) => p.featured);
+  const allTags = useMemo(() => [...new Set(projects.flatMap((p) => p.tags))].sort(), [projects]);
+  const focusLines = (() => {
+    const res = resolve(root, HOME, "~/focus.txt");
+    return res && !isDir(res.node) ? res.node.lines : [];
+  })();
 
   // Intro script, typed out once.
   useEffect(() => {
@@ -104,10 +125,12 @@ export function Terminal() {
       { cmd: "whoami", out: [<span key="w"><span className="text-fg">{site.name}</span> · {site.role}</span>] },
       {
         cmd: "cat focus.txt",
-        out: [
-          <span key="1"><span className="text-accent">→</span> secure, grounded AI: RAG that checks its own answers</span>,
-          <span key="2"><span className="text-accent">→</span> reliable backends: locks, outboxes, idempotency</span>,
-        ],
+        out: focusLines.map((l) => (
+          <span key={l}>
+            <span className="text-accent">→</span>
+            {l.replace(/^→/, "")}
+          </span>
+        )),
       },
       {
         cmd: "ls projects/ --featured",
@@ -249,6 +272,14 @@ export function Terminal() {
       void runAi(cmd);
       return;
     }
+    // Shortcuts take no arguments; with extra words it's a sentence ("email sakthi about an internship").
+    const sentence =
+      (SHORTCUTS.includes(key) && args.length > 0) ||
+      ((key === "projects" || key === "featured") && args.some((a) => a !== "--featured" && a !== "-f"));
+    if (sentence) {
+      void runAi(cmd);
+      return;
+    }
 
     if (READ_ONLY.includes(key)) {
       const verb: Record<string, string> = { rm: "remove", rmdir: "remove", mkdir: "create directory", touch: "touch", mv: "move", cp: "copy" };
@@ -260,16 +291,15 @@ export function Terminal() {
 
     switch (key) {
       case "help":
-        print(faint("portfolio bash · read-only. available commands:"));
         print(
-          ...Object.entries(COMMANDS).map(([c, d]) => (
-            <span key={c} className="block whitespace-pre">
-              <span className="text-fg">{"  " + c.padEnd(10)}</span>
-              {faint(d)}
+          ...HELP_GROUPS.map(([group, cmds]) => (
+            <span key={group} className="block whitespace-pre-wrap">
+              {faint(group.padEnd(10))}
+              <span className="text-fg">{cmds}</span>
             </span>
           )),
+          faint("man <command> explains one · anything else you type goes to my AI"),
         );
-        print(faint("anything else you type is sent to my AI. try: who are you? · best backend project? · hire you?"));
         return;
       case "ls": {
         const targets = paths.length ? paths : ["."];
@@ -408,6 +438,25 @@ export function Terminal() {
         print(<span className="text-muted">{site.github}</span>);
         window.open(site.github, "_blank", "noopener");
         return;
+      case "linkedin":
+        if (!site.linkedin) return print(err("linkedin: not set"));
+        print(<span className="text-muted">{site.linkedin}</span>);
+        window.open(site.linkedin, "_blank", "noopener");
+        return;
+      case "resume":
+      case "cv":
+        if (!site.resume) return print(err(`${key}: no resume on this site yet`));
+        print(<span className="text-accent">opening resume…</span>);
+        window.open(site.resume, "_blank", "noopener");
+        return;
+      case "email":
+        if (!site.email) return print(err("email: not set"));
+        print(<span className="text-muted">{site.email}</span>);
+        navigator.clipboard
+          ?.writeText(site.email)
+          .then(() => print(faint("(copied to clipboard)")))
+          .catch(() => {});
+        return;
       case "contact": {
         const res = resolve(root, HOME, "~/contact.txt");
         if (res && !isDir(res.node)) printText(res.node.lines);
@@ -415,20 +464,45 @@ export function Terminal() {
         return;
       }
       case "about":
-      case "skills": {
-        const res = resolve(root, HOME, `~/${key}.txt`);
+      case "skills":
+      case "experience":
+      case "timeline": {
+        const res = resolve(root, HOME, `~/${key === "timeline" ? "experience" : key}.txt`);
         if (res && !isDir(res.node)) printText(res.node.lines);
         return;
       }
       case "projects":
+      case "featured": {
+        const onlyFeatured = key === "featured" || args.includes("--featured") || args.includes("-f");
         print(
-          ...projects.map((p) => (
-            <span key={p.slug} className="block">
-              <span className="text-cyan">{p.slug}/</span> {faint(`· ${p.tagline}`)}
-            </span>
-          )),
+          ...projects
+            .filter((p) => !onlyFeatured || p.featured)
+            .map((p) => (
+              <span key={p.slug} className="block">
+                <span className="text-cyan">{p.slug}/</span> {faint(`· ${p.tagline}`)}
+              </span>
+            )),
+          faint("open <name> for the full case study"),
         );
         return;
+      }
+      case "filter": {
+        if (!args.length) {
+          print(faint("usage: filter <tag>. tags:"), <span className="text-fg">{allTags.join(" · ")}</span>);
+          return;
+        }
+        const wanted = args.join(" ").replace(/^["']|["']$/g, "").toLowerCase();
+        const tag = allTags.find((t) => t.toLowerCase() === wanted);
+        if (!tag) {
+          // Not a tag (e.g. "filter projects by year"), so treat it as a question.
+          void runAi(cmd);
+          return;
+        }
+        runAction({ name: "filter_projects", args: { tag } });
+        const titles = projects.filter((p) => p.tags.includes(tag)).map((p) => p.slug + "/");
+        print(<span className="text-cyan">{titles.join("  ")}</span>, faint(`↳ filtered the projects grid: ${tag}`));
+        return;
+      }
       case "sudo":
         print(faint(`[sudo] password for ${site.handle}:`), err(`${site.handle} is not in the sudoers file. This incident will be reported.`));
         return;
@@ -539,8 +613,18 @@ export function Terminal() {
     let candidates: string[];
     let base = "";
     let partial = last;
+    const first = tokens[0].toLowerCase();
     if (tokens.length === 1) {
       candidates = Object.keys(COMMANDS).filter((c) => c.startsWith(last));
+    } else if (tokens.length === 2 && ["filter", "man", "projects"].includes(first)) {
+      // Command-aware completion: tags, command names, flags.
+      const options = first === "filter" ? allTags : first === "man" ? Object.keys(COMMANDS) : ["--featured"];
+      candidates = options.filter((o) => o.toLowerCase().startsWith(last.toLowerCase()));
+    } else if (tokens.length === 2 && first === "open" && !last.includes("/")) {
+      // open: project names plus files here.
+      const cur = resolve(root, cwd, ".");
+      const files = cur && isDir(cur.node) ? Object.keys(cur.node.children).filter((n) => !n.startsWith(".")) : [];
+      candidates = [...new Set([...projects.map((p) => p.slug), ...files])].filter((n) => n.startsWith(last));
     } else {
       const slash = last.lastIndexOf("/");
       base = slash >= 0 ? last.slice(0, slash + 1) : "";

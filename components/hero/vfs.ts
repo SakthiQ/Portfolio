@@ -38,6 +38,8 @@ export function buildFs(projects: ProjectSummary[]): VDir {
     "focus.txt": file([
       "→ secure, grounded AI: RAG that checks its own answers",
       "→ reliable backends: locks, outboxes, idempotency",
+      "→ stack: Python, FastAPI, Java, Spring Boot, PostgreSQL, Redis",
+      "→ status: B.Tech CSE '27 (VIT) · open to backend & AI roles",
     ]),
     "skills.txt": file(skills.map((g) => `${g.group.toLowerCase()}: ${g.items.join(", ")}`)),
     "experience.txt": file(timeline.map((t) => `${t.when.padEnd(14)} ${t.title}`)),
