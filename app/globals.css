@@ -63,6 +63,15 @@ body {
   border-radius: 4px;
 }
 
+/* The hero terminal shows its own blinking caret instead of a focus box */
+.term-input:focus-visible {
+  outline: none;
+}
+.term-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
 /* Markdown body for case studies and chat replies */
 .prose-term {
   line-height: 1.75;
