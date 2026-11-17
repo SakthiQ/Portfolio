@@ -17,9 +17,15 @@ export function About({ stats }: { stats: { projects: number; tests: number; lan
         <Reveal>
           <div className="space-y-4 text-lg leading-relaxed text-muted">
             <p>
-              I&apos;m <span className="text-fg">{site.name}</span>, a software engineer who likes the hard, unglamorous parts:
-              making sure two patients can&apos;t book the same slot, that a backup can actually be restored, and that an
-              AI answer is backed by evidence.
+              I&apos;m <span className="text-fg">{site.fullName}</span>, a Computer Science undergraduate at{" "}
+              <span className="text-fg">VIT Vellore</span> (2027) who likes the hard, unglamorous parts: making sure two
+              patients can&apos;t book the same slot, that a backup can actually be restored, and that an AI answer is
+              backed by evidence.
+            </p>
+            <p>
+              As an <span className="text-fg">AI Intern at Hexaware Technologies</span>, I built 4+ AI agents on Oracle
+              Fusion Cloud for inventory management and procurement. I&apos;m also an Oracle Cloud Infrastructure 2025
+              Certified Generative AI Professional.
             </p>
             <p>
               Lately I&apos;ve been working on <span className="text-fg">secure retrieval-augmented generation</span>: systems

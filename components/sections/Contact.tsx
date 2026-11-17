@@ -1,4 +1,4 @@
-import { FileText, Mail, MessageSquareText } from "lucide-react";
+import { FileText, Mail, MessageSquareText, Phone } from "lucide-react";
 import { Github, Linkedin } from "@/components/icons";
 import { Reveal, SectionHeading } from "../Reveal";
 import { site } from "@/lib/site";
@@ -7,7 +7,8 @@ import { OpenChatButton } from "../chat/OpenChatButton";
 export function Contact() {
   const links = [
     site.email && { href: `mailto:${site.email}`, label: "Email", value: site.email, Icon: Mail },
-    site.linkedin && { href: site.linkedin, label: "LinkedIn", value: "Connect", Icon: Linkedin },
+    site.phone && { href: `tel:${site.phone.replace(/\s/g, "")}`, label: "Phone", value: site.phone, Icon: Phone },
+    site.linkedin && { href: site.linkedin, label: "LinkedIn", value: "sakthinarayan-v", Icon: Linkedin },
     { href: site.github, label: "GitHub", value: site.githubUser, Icon: Github },
     site.resume && { href: site.resume, label: "Resume", value: "Download PDF", Icon: FileText },
   ].filter(Boolean) as { href: string; label: string; value: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[];
@@ -36,7 +37,7 @@ export function Contact() {
                 <li key={label}>
                   <a
                     href={href}
-                    target={href.startsWith("mailto:") ? undefined : "_blank"}
+                    target={href.startsWith("mailto:") || href.startsWith("tel:") ? undefined : "_blank"}
                     rel="noreferrer"
                     className="flex items-center gap-4 rounded-xl border border-line bg-bg/50 px-4 py-3 transition hover:border-accent/50"
                   >

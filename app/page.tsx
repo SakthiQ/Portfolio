@@ -11,8 +11,8 @@ import { skills } from "@/lib/site";
 
 export const revalidate = 3600;
 
-// Test counts stated in the project READMEs: Healthcare 137, BitbyBit 112, ChainJudge 38.
-const TESTS_WRITTEN = 280;
+// Test counts from the resume and READMEs: ATTS-RAG 515, Healthcare 137, BitbyBit 112, ChainJudge 38 (802 total).
+const TESTS_WRITTEN = 800;
 
 export default function Home() {
   const projects = getProjectSummaries();

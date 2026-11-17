@@ -8,6 +8,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { CursorGlow } from "@/components/CursorGlow";
 import { Footer } from "@/components/Footer";
 import { getProjectSummaries } from "@/lib/content";
+import { Analytics } from "@vercel/analytics/next";
 import { site } from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -15,9 +16,9 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", 
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: { default: `${site.name} · ${site.role}`, template: `%s · ${site.name}` },
+  title: { default: `${site.fullName} · ${site.role}`, template: `%s · ${site.fullName}` },
   description: site.tagline,
-  openGraph: { title: `${site.name} · ${site.role}`, description: site.tagline, type: "website" },
+  openGraph: { title: `${site.fullName} · ${site.role}`, description: site.tagline, type: "website" },
   twitter: { card: "summary_large_image" },
 };
 
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <CommandPalette />
           <ChatWidget />
         </ChatProvider>
+        <Analytics />
+
       </body>
     </html>
   );

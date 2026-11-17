@@ -5,14 +5,16 @@ year: 2026
 featured: true
 order: 1
 status: Active
-stack: [Python, FastAPI, Ollama, Llama 3, Streamlit, Docker, NLI models, Hybrid search]
+stack: [Python, FastAPI, LangChain, ChromaDB, Ollama, Llama 3, Streamlit, Docker, NLI models, Hybrid search]
 tags: [Python, AI/ML, Security, Backend]
 github: https://github.com/SakthiQ/ATTS-RAG
 highlights:
-  - Three security layers around a fully local RAG pipeline
-  - Every answer sentence verified against evidence with an NLI model
-  - Multi-tenant accounts, clearance levels, 2FA and a hash-chained audit log
+  - Three-layer security that blocks 87.5% of prompt-injection attacks
+  - Answer checking catches 98.8% of made-up answers by verifying every claim
+  - Multi-tenant accounts, roles, 2FA and a hash-chained audit log, backed by 515 tests
 ---
+
+Sakthi's capstone project at VIT.
 
 ## The problem
 Teams want to ask questions about their own documents with an LLM, but they can't risk three things: data leaving the building, prompt-injection attacks (including hidden instructions planted inside uploaded files), and confident answers the documents don't support.
@@ -27,6 +29,11 @@ Around the usual retrieve-and-answer loop it adds three security layers:
 - **Layer 3, evidence-to-answer gate:** checks every sentence of the draft answer against the evidence with a natural-language-inference model plus number, negation and table checks, and drops what isn't supported.
 
 Uploaded documents are scanned for hidden instructions before indexing, and suspicious passages are quarantined. A per-user suspicion score, fed by all three layers and decaying over time, tightens every threshold for that user.
+
+## Results
+- The security layers **block 87.5% of prompt-injection attacks** and stop harmful content hidden inside documents.
+- Answer checking **catches 98.8% of made-up answers** by verifying every claim against the source document.
+- The system is covered by **515 tests**.
 
 ## Architecture
 Question → threat gate → hybrid search (vector + keyword, reranked, scoped to tenant and clearance) → trust gate → local model drafts a cited answer → sentence-by-sentence verification → verified answer with `[E1]`, `[E2]` citations.

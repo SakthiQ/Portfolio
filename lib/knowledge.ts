@@ -16,11 +16,13 @@ export function buildSystemPrompt(): string {
 
   const projects = getProjects();
   const profile = [
-    `Name: ${site.name}`,
+    `Name: ${site.fullName} (goes by ${site.name})`,
     `Role: ${site.role}`,
     `Tagline: ${site.tagline}`,
+    `Education: ${site.education}`,
     site.location && `Location: ${site.location}`,
     site.email && `Email: ${site.email}`,
+    site.phone && `Phone: ${site.phone}`,
     `GitHub: ${site.github}`,
     site.linkedin && `LinkedIn: ${site.linkedin}`,
     site.resume && `Resume: available for download on the site`,

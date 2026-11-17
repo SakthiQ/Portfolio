@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ArrowUp, Briefcase, Mail, Maximize2, RotateCcw, Square, X, Sparkles, CornerDownRight } from "lucide-react";
+import { ArrowUp, Briefcase, Mail, Phone, Maximize2, RotateCcw, Square, X, Sparkles, CornerDownRight } from "lucide-react";
 import { Github, Linkedin } from "@/components/icons";
 import { useChat } from "./ChatProvider";
 import { site } from "@/lib/site";
@@ -36,6 +36,7 @@ function actionLabel(a: ChatAction, titles: Map<string, string>) {
 function ContactCard() {
   const links = [
     site.email && { href: `mailto:${site.email}`, label: site.email, Icon: Mail },
+    site.phone && { href: `tel:${site.phone.replace(/\s/g, "")}`, label: site.phone, Icon: Phone },
     site.linkedin && { href: site.linkedin, label: "LinkedIn", Icon: Linkedin },
     { href: site.github, label: "github.com/" + site.githubUser, Icon: Github },
   ].filter(Boolean) as { href: string; label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[];
