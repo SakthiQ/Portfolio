@@ -1,9 +1,10 @@
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { GoogleGenAI, type Content, type GenerateContentResponse } from "@google/genai";
 import { buildSystemPrompt } from "@/lib/knowledge";
 import { buildToolDeclarations, TOOL_NAMES } from "@/lib/chatTools";
 import { getAllTags, getProjects } from "@/lib/content";
 import { rateLimit } from "@/lib/rateLimit";
-import type { ChatStreamEvent } from "@/lib/types";
+import { sections, site } from "@/lib/site";
+import type { ChatStreamEvent, Project } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,17 +12,53 @@ export const dynamic = "force-dynamic";
 const MAX_HISTORY = 12;
 const MAX_MSG_CHARS = 2_000;
 const MAX_LAST_CHARS = 6_000; // room for a pasted job description
-const MAX_TOOL_ROUNDS = 2;
-const MODEL_TIMEOUT_MS = 15_000; // a hung model request is abandoned and the next model is tried
-const COOLDOWN_MS = 5 * 60_000; // after a model reports overload, skip it for this long
+const FIRST_CHUNK_MS = 7_000; // a model that hasn't started answering by now is skipped for the next one
+const TOTAL_MS = 45_000; // hard cap for one model's whole answer
+const COOLDOWN_MS = 5 * 60_000; // after a model fails, skip it for this long
 
 // Shared across requests on this server instance: model -> time it may be tried again.
 const cooldownUntil = new Map<string, number>();
 
 type InMessage = { role: "user" | "assistant"; content: string };
+type Call = { name: string; args: Record<string, unknown> };
+type Attempt = {
+  it: AsyncIterator<GenerateContentResponse>;
+  first: IteratorResult<GenerateContentResponse>;
+  finish: () => void;
+};
 
 function bad(status: number, message: string, headers: Record<string, string> = {}) {
   return Response.json({ error: message }, { status, headers });
+}
+
+// Reply for a page action, written from the site's own data so no second model call is needed.
+function confirmActions(calls: Call[], projects: Project[]): string {
+  return calls
+    .map((c) => {
+      switch (c.name) {
+        case "open_project": {
+          const p = projects.find((x) => x.slug === c.args.slug);
+          return p ? `I've opened **${p.title}** for you. ${p.tagline}` : "I've opened that project for you.";
+        }
+        case "filter_projects": {
+          const tag = String(c.args.tag ?? "");
+          const titles = projects.filter((p) => p.tags.includes(tag)).map((p) => `**${p.title}**`);
+          return titles.length
+            ? `I've filtered the projects to ${tag}: ${titles.join(", ")}.`
+            : `I've filtered the projects to ${tag}.`;
+        }
+        case "scroll_to_section": {
+          const s = sections.find((x) => x.id === c.args.section);
+          return `I've taken you to the ${s?.label ?? "requested"} section.`;
+        }
+        case "show_contact":
+          return `Here's how to reach ${site.name}:`;
+        default:
+          return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export async function POST(req: Request) {
@@ -62,18 +99,21 @@ export async function POST(req: Request) {
   }));
 
   const projects = getProjects();
-  const slugs = projects.map((p) => p.slug);
   const config = {
     systemInstruction: buildSystemPrompt(),
-    tools: [{ functionDeclarations: buildToolDeclarations(slugs, getAllTags()) }],
+    tools: [{ functionDeclarations: buildToolDeclarations(projects.map((p) => p.slug), getAllTags()) }],
     temperature: 0.4,
     maxOutputTokens: 1_200,
   };
-  // Free-tier models are often briefly overloaded (503) or out of quota (429, counted per model),
+
+  // Free-tier models are often briefly overloaded (503), slow, or out of quota (429, counted per model),
   // so fall back through a list of models before giving up.
   const configured = [
     ...new Set(
-      [process.env.GEMINI_MODEL || "gemini-3.8-flash", ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",")]
+      [
+        process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+        ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.5-flash").split(","),
+      ]
         .map((m) => m.trim())
         .filter(Boolean),
     ),
@@ -83,29 +123,67 @@ export async function POST(req: Request) {
   const isCooling = (m: string) => (cooldownUntil.get(m) ?? 0) > now;
   const models = [...configured.filter((m) => !isCooling(m)), ...configured.filter(isCooling)];
   let modelIdx = 0;
+
   const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
-  // Overloaded, out of quota, retired (404) or hung models: move on to the next one.
+  // Overloaded, out of quota, retired (404), slow or hung models: move on to the next one.
   const retryable = (e: unknown) =>
-    /\b(404|429|500|503|504)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|high demand|no longer available|abort|timed? ?out/i.test(errText(e));
+    /\b(404|429|500|503|504)\b|UNAVAILABLE|RESOURCE_EXHAUSTED|overloaded|high demand|no longer available|abort|timed? ?out/i.test(
+      errText(e),
+    );
+  const skipModel = (why: string) => {
+    cooldownUntil.set(models[modelIdx], Date.now() + COOLDOWN_MS);
+    console.warn(`[chat] ${models[modelIdx]} ${why}, trying the next model`);
+  };
+
   const ai = new GoogleGenAI({ apiKey });
-  const openStream = async () => {
-    let lastErr: unknown;
+
+  // Start one model and wait for its first chunk, but only up to FIRST_CHUNK_MS.
+  const startAttempt = async (model: string): Promise<Attempt> => {
+    const ctrl = new AbortController();
+    const totalTimer = setTimeout(() => ctrl.abort(new Error("timed out")), TOTAL_MS);
+    const finish = () => {
+      clearTimeout(totalTimer);
+      ctrl.abort(); // closes the connection, which can otherwise linger after the answer ends
+    };
+    const started = (async () => {
+      const response = await ai.models.generateContentStream({
+        model,
+        contents,
+        config: { ...config, abortSignal: ctrl.signal },
+      });
+      const it = response[Symbol.asyncIterator]();
+      return { it, first: await it.next() };
+    })();
+    let firstTimer: ReturnType<typeof setTimeout> | undefined;
+    const tooSlow = new Promise<never>((_, reject) => {
+      firstTimer = setTimeout(() => reject(new Error("timed out waiting for the first response")), FIRST_CHUNK_MS);
+    });
+    try {
+      const { it, first } = await Promise.race([started, tooSlow]);
+      return { it, first, finish };
+    } catch (e) {
+      finish();
+      started.catch(() => {}); // the abandoned attempt will reject after the abort
+      throw e;
+    } finally {
+      clearTimeout(firstTimer);
+    }
+  };
+
+  const openAttempt = async (): Promise<Attempt> => {
+    let lastErr: unknown = new Error("No Gemini model configured.");
     for (; modelIdx < models.length; modelIdx++) {
       try {
-        return await ai.models.generateContentStream({
-          model: models[modelIdx],
-          contents,
-          config: { ...config, abortSignal: AbortSignal.timeout(MODEL_TIMEOUT_MS) },
-        });
+        return await startAttempt(models[modelIdx]);
       } catch (e) {
         lastErr = e;
         if (!retryable(e)) throw e;
-        cooldownUntil.set(models[modelIdx], Date.now() + COOLDOWN_MS);
-        console.warn(`[chat] ${models[modelIdx]} unavailable, trying the next model`);
+        skipModel(/timed out/.test(errText(e)) ? "too slow" : "unavailable");
       }
     }
     throw lastErr;
   };
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
@@ -120,65 +198,49 @@ export async function POST(req: Request) {
         }
       };
       try {
-        for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-          let modelParts: Part[] = [];
-          let calls: { name: string; args: Record<string, unknown> }[] = [];
-          let wroteText = false;
+        let calls: Call[] = [];
+        let wroteText = false;
 
-          // A model can also fail or hang mid-stream; if nothing reached the visitor yet, retry on the next model.
-          while (true) {
-            modelParts = [];
-            calls = [];
-            const response = await openStream();
-            const started = Date.now();
-            try {
-              for await (const chunk of response) {
-                const candidate = chunk.candidates?.[0];
-                const parts = candidate?.content?.parts ?? [];
-                for (const part of parts) {
-                  modelParts.push(part);
-                  if (part.thought) continue;
-                  if (part.text) {
-                    wroteText = true;
-                    send({ t: "text", v: part.text });
-                  }
-                  if (part.functionCall?.name) {
-                    calls.push({ name: part.functionCall.name, args: part.functionCall.args ?? {} });
-                  }
+        // One model call per message. If a model fails before any text reached the visitor, try the next one.
+        while (true) {
+          calls = [];
+          const attempt = await openAttempt();
+          try {
+            let r = attempt.first;
+            while (!r.done) {
+              const candidate = r.value.candidates?.[0];
+              for (const part of candidate?.content?.parts ?? []) {
+                if (part.thought) continue;
+                if (part.text) {
+                  wroteText = true;
+                  send({ t: "text", v: part.text });
                 }
-                // Stop as soon as the model says it's done; the connection can linger long after.
-                if (candidate?.finishReason || closed || Date.now() - started > MODEL_TIMEOUT_MS * 2) break;
+                if (part.functionCall?.name) {
+                  calls.push({ name: part.functionCall.name, args: part.functionCall.args ?? {} });
+                }
               }
-              break;
-            } catch (e) {
-              if (wroteText || !retryable(e) || modelIdx >= models.length - 1) throw e;
-              cooldownUntil.set(models[modelIdx], Date.now() + COOLDOWN_MS);
-              console.warn(`[chat] ${models[modelIdx]} failed mid-stream, trying the next model`);
-              modelIdx++;
+              // Stop as soon as the model says it's done; the connection can linger long after.
+              if (candidate?.finishReason || closed) break;
+              r = await attempt.it.next();
             }
-          }
-
-          if (!calls.length) {
-            if (!wroteText && round === 0) send({ t: "text", v: "Sorry, I couldn't come up with an answer. Try rephrasing?" });
+            attempt.finish();
             break;
+          } catch (e) {
+            attempt.finish();
+            if (wroteText || !retryable(e) || modelIdx >= models.length - 1) throw e;
+            skipModel("failed mid-answer");
+            modelIdx++;
           }
+        }
 
-          // Tools run in the browser; tell the model they succeeded so it can finish its reply.
-          const responses: Part[] = [];
-          for (const call of calls) {
-            const valid = (TOOL_NAMES as readonly string[]).includes(call.name);
-            if (valid) send({ t: "action", name: call.name, args: call.args });
-            responses.push({
-              functionResponse: {
-                name: call.name,
-                response: valid ? { result: "Done. The page was updated for the visitor." } : { error: "Unknown tool" },
-              },
-            });
-          }
-          contents.push({ role: "model", parts: modelParts });
-          contents.push({ role: "user", parts: responses });
-          // If the model already answered in text, one more round only adds noise.
-          if (wroteText) break;
+        // Page actions run in the browser. Confirm them straight away instead of asking the model again.
+        const actions = calls.filter((c) => (TOOL_NAMES as readonly string[]).includes(c.name));
+        for (const c of actions) send({ t: "action", name: c.name, args: c.args });
+        if (!wroteText) {
+          send({
+            t: "text",
+            v: actions.length ? confirmActions(actions, projects) : "Sorry, I couldn't come up with an answer. Try rephrasing?",
+          });
         }
       } catch (err) {
         const msg = errText(err);
