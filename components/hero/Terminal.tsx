@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useReducedMotion } from "framer-motion";
 import { scrollToId, useChat } from "../chat/ChatProvider";
 import { site, skills } from "@/lib/site";
+import { streamChat, type ChatTurn } from "@/lib/chatClient";
+import type { ChatAction } from "@/lib/types";
 import { HOME, buildFs, displayPath, resolve, type VDir, type VNode } from "./vfs";
 
 type Line = { kind: "cmd"; text: string; path: string } | { kind: "out"; node: ReactNode };
@@ -25,13 +27,40 @@ const COMMANDS: Record<string, string> = {
   uname: "system info (-a for all)",
   neofetch: "system summary",
   man: "help for one command",
-  ask: "ask the AI assistant a question",
+  ask: "ask the AI (or just type normally)",
   github: "open the GitHub profile",
   contact: "show contact details",
   exit: "leave the shell",
 };
 const READ_ONLY = ["rm", "mv", "cp", "mkdir", "rmdir", "touch", "chmod", "chown", "ln", "nano", "vi", "vim"];
-const GREETINGS = ["hi", "hello", "hey", "hii", "yo", "namaste", "vanakkam"];
+const AI_MEMORY = 10; // past messages sent with each question, so follow-ups make sense
+
+type LiveReply = { text: string; notes: ReactNode[]; error?: string };
+
+// Renders an AI reply as plain terminal text: headings, bullets and links simplified.
+function AiText({ text }: { text: string }) {
+  const lines = text.replace(/\r/g, "").split("\n");
+  return (
+    <>
+      {lines.map((raw, i) => {
+        const heading = /^\s*#{1,6}\s+/.test(raw);
+        const line = raw
+          .replace(/^\s*#{1,6}\s+/, "")
+          .replace(/^(\s*)[-*•]\s+/, "$1  • ")
+          .replace(/\*\*(.+?)\*\*/g, "$1")
+          .replace(/__(.+?)__/g, "$1")
+          .replace(/(^|[^*])\*(?!\s)(.+?)\*/g, "$1$2")
+          .replace(/`([^`]+)`/g, "$1")
+          .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, "$1 ($2)");
+        return (
+          <span key={i} className={`block whitespace-pre-wrap ${heading ? "text-accent" : "text-fg"}`}>
+            {line || " "}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 function Prompt({ path }: { path: string }) {
   return (
@@ -48,7 +77,10 @@ const faint = (text: ReactNode) => <span className="text-faint">{text}</span>;
 const isDir = (n: VNode): n is VDir => n.kind === "dir";
 
 export function Terminal() {
-  const { projects, ask } = useChat();
+  const { projects, runAction } = useChat();
+  const [aiHistory, setAiHistory] = useState<ChatTurn[]>([]);
+  const [live, setLive] = useState<LiveReply | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const router = useRouter();
   const reduce = useReducedMotion();
   const root = useMemo(() => buildFs(projects), [projects]);
@@ -84,7 +116,7 @@ export function Terminal() {
     ];
     const hint: Line = {
       kind: "out",
-      node: faint(<>type <span className="text-fg">help</span> for bash commands, or ask me anything.</>),
+      node: faint(<>type <span className="text-fg">help</span> for commands, or just type to chat with my AI.</>),
     };
     const toLines = (s: (typeof script)[number]): Line[] => [
       { kind: "cmd", text: s.cmd, path: "~" },
@@ -212,6 +244,12 @@ export function Terminal() {
     const paths = args.filter((a) => !(a.startsWith("-") && a.length > 1));
     const key = name.toLowerCase();
 
+    // A question is always for the AI, even if it starts with a command word ("open source projects?").
+    if (cmd.endsWith("?")) {
+      void runAi(cmd);
+      return;
+    }
+
     if (READ_ONLY.includes(key)) {
       const verb: Record<string, string> = { rm: "remove", rmdir: "remove", mkdir: "create directory", touch: "touch", mv: "move", cp: "copy" };
       const target = paths[0] ? `cannot ${verb[key] ?? "change"} '${paths[0]}': ` : "";
@@ -231,7 +269,7 @@ export function Terminal() {
             </span>
           )),
         );
-        print(faint("anything else that reads like a question goes to the AI assistant."));
+        print(faint("anything else you type is sent to my AI. try: who are you? · best backend project? · hire you?"));
         return;
       case "ls": {
         const targets = paths.length ? paths : ["."];
@@ -363,9 +401,8 @@ export function Terminal() {
         return;
       }
       case "ask":
-        if (!args.length) return print(faint("usage: ask <question>"));
-        print(<span className="text-accent">sending to the AI assistant…</span>);
-        ask(args.join(" "));
+        if (!args.length) return print(faint("usage: ask <question>  (or just type your question)"));
+        void runAi(args.join(" "));
         return;
       case "github":
         print(<span className="text-muted">{site.github}</span>);
@@ -404,15 +441,96 @@ export function Terminal() {
         return;
     }
 
-    // Not a command: questions go to the AI, everything else gets bash's answer.
-    if (args.length >= 2 || cmd.endsWith("?")) {
-      print(<span className="text-accent">not a bash command, so I asked the AI assistant →</span>);
-      ask(cmd);
-      return;
-    }
-    print(err(`bash: ${name}: command not found`));
-    if (GREETINGS.includes(key)) print(faint(`hi! 👋 type \`help\` for commands, or \`ask ${name}\` to chat with the AI.`));
+    // Not a command: it's a message for the AI.
+    void runAi(cmd);
   };
+
+  const actionNote = (a: ChatAction): ReactNode => {
+    switch (a.name) {
+      case "open_project": {
+        const p = projects.find((x) => x.slug === a.args.slug);
+        return faint(`↳ opening ${p?.title ?? a.args.slug}…`);
+      }
+      case "filter_projects":
+        return faint(`↳ filtered the projects grid: ${a.args.tag}`);
+      case "scroll_to_section":
+        return faint(`↳ scrolled to ${a.args.section}`);
+      case "show_contact": {
+        const res = resolve(root, HOME, "~/contact.txt");
+        return res && !isDir(res.node) ? (
+          <span className="block">
+            {res.node.lines.map((l) => (
+              <span key={l} className="block whitespace-pre text-cyan">
+                {l}
+              </span>
+            ))}
+          </span>
+        ) : null;
+      }
+      default:
+        return null;
+    }
+  };
+
+  // Send a message to the AI and stream the reply into the terminal.
+  const runAi = async (question: string) => {
+    if (live) return;
+    const turns: ChatTurn[] = [...aiHistory, { role: "user" as const, content: question }].slice(-AI_MEMORY);
+    const reply: LiveReply = { text: "", notes: [] };
+    setLive({ ...reply });
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    let stopped = false;
+    try {
+      await streamChat(turns, {
+        signal: ctrl.signal,
+        onText: (t) => {
+          reply.text += t;
+          setLive({ ...reply });
+        },
+        onAction: (a) => {
+          reply.notes = [...reply.notes, actionNote(a)];
+          setLive({ ...reply });
+          if (a.name !== "show_contact") runAction(a);
+        },
+        onError: (msg) => {
+          if (!reply.text) reply.error = msg;
+          setLive({ ...reply });
+        },
+      });
+    } catch {
+      stopped = true; // Ctrl+C
+    }
+    abortRef.current = null;
+    print(
+      <span className="block">
+        {reply.text && <AiText text={reply.text} />}
+        {reply.notes.map((n, i) => (
+          <span key={i} className="block">
+            {n}
+          </span>
+        ))}
+        {reply.error && err(reply.error)}
+        {stopped && faint("^C")}
+      </span>,
+    );
+    if (reply.text) setAiHistory([...turns, { role: "assistant" as const, content: reply.text }].slice(-AI_MEMORY));
+    setLive(null);
+    requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+  };
+
+  // Ctrl+C stops a reply while it's streaming (the input is hidden then, like a running program).
+  useEffect(() => {
+    if (!live) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "c" && !window.getSelection()?.toString()) {
+        e.preventDefault();
+        abortRef.current?.abort();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [live]);
 
   // Bash-style Tab completion for command names and paths.
   const complete = () => {
@@ -533,7 +651,19 @@ export function Terminal() {
             <span className="animate-blink text-accent">▍</span>
           </div>
         )}
-        {ready && (
+        {live && (
+          <div aria-live="polite">
+            {live.text ? <AiText text={live.text} /> : faint("thinking")}
+            {live.notes.map((n, i) => (
+              <span key={i} className="block">
+                {n}
+              </span>
+            ))}
+            {live.error && err(live.error)}
+            <span className="animate-blink text-accent">▍</span>
+          </div>
+        )}
+        {ready && !live && (
           <form onSubmit={onSubmit} className="flex">
             <Prompt path={here} />
             <input

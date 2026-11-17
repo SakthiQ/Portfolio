@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { ChatAction, ChatMessage, ChatStreamEvent, ProjectSummary } from "@/lib/types";
+import type { ChatAction, ChatMessage, ProjectSummary } from "@/lib/types";
+import { streamChat } from "@/lib/chatClient";
 
 type ChatContextValue = {
   open: boolean;
@@ -13,6 +14,7 @@ type ChatContextValue = {
   ask: (text: string) => void; // open the widget and send
   reset: () => void;
   stop: () => void;
+  runAction: (action: ChatAction) => void; // perform a page action (also used by the hero terminal)
   projects: ProjectSummary[];
 };
 
@@ -94,47 +96,20 @@ export function ChatProvider({ children, projects }: { children: ReactNode; proj
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history.map(({ role, content }) => ({ role, content })) }),
-          signal: controller.signal,
-        });
-        if (!res.ok || !res.body) {
-          const data = await res.json().catch(() => ({}));
-          update((m) => ({ ...m, content: data.error ?? "Something went wrong.", error: true }));
-          return;
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let event: ChatStreamEvent;
-            try {
-              event = JSON.parse(line);
-            } catch {
-              continue;
-            }
-            if (event.t === "text") update((m) => ({ ...m, content: m.content + event.v }));
-            else if (event.t === "error") update((m) => ({ ...m, content: m.content || event.v, error: !m.content }));
-            else if (event.t === "action") {
-              const action = { name: event.name, args: event.args };
+        await streamChat(
+          history.map(({ role, content }) => ({ role, content })),
+          {
+            signal: controller.signal,
+            onText: (t) => update((m) => ({ ...m, content: m.content + t })),
+            onError: (msg) => update((m) => ({ ...m, content: m.content || msg, error: !m.content })),
+            onAction: (action) => {
               update((m) => ({ ...m, actions: [...(m.actions ?? []), action] }));
               runAction(action);
-            }
-          }
-        }
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          update((m) => ({ ...m, content: "Couldn't reach the chatbot. Check your connection and try again.", error: true }));
-        }
+            },
+          },
+        );
+      } catch {
+        // Stopped by the visitor (AbortError): keep whatever arrived.
       } finally {
         setStreaming(false);
         abortRef.current = null;
@@ -158,7 +133,7 @@ export function ChatProvider({ children, projects }: { children: ReactNode; proj
   }, []);
 
   return (
-    <ChatContext.Provider value={{ open, setOpen, messages, streaming, send, ask, reset, stop, projects }}>
+    <ChatContext.Provider value={{ open, setOpen, messages, streaming, send, ask, reset, stop, runAction, projects }}>
       {children}
     </ChatContext.Provider>
   );
