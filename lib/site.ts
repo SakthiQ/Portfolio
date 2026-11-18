@@ -60,7 +60,7 @@ export const timeline: { when: string; title: string; detail: string }[] = [
   {
     when: "VIT E-Cell",
     title: "Marketing Executive, POC for LinkedIn",
-    detail: "Marketing Executive and point of contact for LinkedIn outreach, and helped mobilise students for E-Summit (3,500+ participants).",
+    detail: "Marketing Executive and point of contact for LinkedIn outreach. Grew the club’s Instagram by 1,500+ followers and helped mobilise students for E-Summit (3,500+ participants).",
   },
   {
     when: "2023 – 2027",

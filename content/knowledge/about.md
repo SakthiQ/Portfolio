@@ -15,7 +15,7 @@ Sakthi Narayan V ("Sakthi") is a Computer Science and Engineering undergraduate 
 
 **Certifications:** Oracle Cloud Infrastructure 2025 Certified Generative AI Professional.
 
-**Leadership:** Marketing Executive and point of contact for LinkedIn at the VIT E-Cell club; helped mobilise student participation for E-Summit (3,500+ participants).
+**Leadership:** Marketing Executive and point of contact for LinkedIn at the VIT E-Cell club; grew the club's Instagram following by 1,500+ followers and helped mobilise student participation for E-Summit (3,500+ participants).
 
 **Interests:**
 - Work and tech: distributed systems and AI systems.
