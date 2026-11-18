@@ -46,7 +46,7 @@ export function buildFs(projects: ProjectSummary[]): VDir {
     // certification and project summaries, so it is not reused here.
     "experience.txt": file(
       timeline
-        .filter((t) => /Intern ·|Point of Contact/.test(t.title))
+        .filter((t) => /Intern ·|Marketing Executive/.test(t.title))
         .map((t) => `${t.when.padEnd(14)} ${t.title}`),
     ),
     "education.txt": file(

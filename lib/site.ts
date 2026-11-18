@@ -58,9 +58,9 @@ export const timeline: { when: string; title: string; detail: string }[] = [
     detail: "Built BitbyBit (multi-database backups), hotreload (Go), ChainJudge (blockchain capstone) and DCT forgery detection.",
   },
   {
-    when: "VIT Leo Club",
-    title: "Point of Contact",
-    detail: "Grew the club's Instagram by 1,500+ followers, managed LinkedIn outreach, and mobilised students for E-Summit (3,500+ participants).",
+    when: "VIT E-Cell",
+    title: "Marketing Executive, POC for LinkedIn",
+    detail: "Marketing Executive and point of contact for LinkedIn outreach, and helped mobilise students for E-Summit (3,500+ participants).",
   },
   {
     when: "2023 – 2027",
