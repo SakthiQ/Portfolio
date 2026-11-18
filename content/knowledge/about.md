@@ -17,6 +17,10 @@ Sakthi Narayan V ("Sakthi") is a Computer Science and Engineering undergraduate 
 
 **Leadership:** Point of Contact for the VIT Leo Club: grew the club's Instagram following by 1,500+ followers, managed its LinkedIn outreach, and mobilised student participation for E-Summit (3,500+ participants).
 
+**Interests:**
+- Work and tech: distributed systems and AI systems.
+- Outside coding: football, cricket and Red Dead Redemption 2.
+
 **How Sakthi works:**
 - Writes thorough tests (515 in ATTS-RAG, 137 in the Healthcare Manager, 112 in BitbyBit, 38 contract tests in ChainJudge).
 - Prefers small, readable tools over heavy frameworks (hotreload is about 700 lines of Go with one dependency).

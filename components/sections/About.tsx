@@ -18,7 +18,7 @@ const cards = [
   {
     Icon: Compass,
     title: "What I'm into",
-    text: "Trustworthy AI, backend systems that stay correct under load, databases, and small developer tools. I also explore blockchain and mobile apps.",
+    text: "Distributed systems and AI systems: making them correct, secure and trustworthy. Away from the keyboard it’s football, cricket and Red Dead Redemption 2.",
   },
   {
     Icon: Wrench,

@@ -26,3 +26,6 @@ Grades aren't listed on the site pages, but they're in Sakthi's resume, which yo
 
 **Where can I get Sakthi's resume?**
 Download it from the Contact section, or press Ctrl/Cmd+K and choose "Open resume".
+
+**What are Sakthi's interests and hobbies?**
+At work: distributed systems and AI systems. Outside coding: football, cricket and Red Dead Redemption 2.
