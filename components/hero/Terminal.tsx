@@ -29,7 +29,8 @@ const COMMANDS: Record<string, string> = {
   man: "help for one command",
   ask: "ask the AI (or just type normally)",
   projects: "list projects (--featured or -f for the highlights)",
-  experience: "internships, certification, education (alias: timeline)",
+  experience: "internships and leadership (alias: timeline)",
+  education: "degree and certification",
   resume: "open the resume PDF (alias: cv)",
   contact: "show contact details",
   email: "print the email address and copy it",
@@ -39,7 +40,7 @@ const COMMANDS: Record<string, string> = {
   exit: "leave the shell",
 };
 
-const SHORTCUTS = ["whoami", "about", "skills", "experience", "timeline", "resume", "cv", "contact", "email", "linkedin", "github"];
+const SHORTCUTS = ["whoami", "about", "skills", "experience", "education", "timeline", "resume", "cv", "contact", "email", "linkedin", "github"];
 
 // Short, explained help for visitors who don't know a shell. Each command is clickable:
 // `fill` puts it in the input to finish typing, otherwise it runs straight away.
@@ -48,7 +49,8 @@ const HELP_ITEMS: { cmd: string; desc: string; fill?: string }[] = [
   { cmd: "open <name>", desc: "read a project's full case study", fill: "open " },
   { cmd: "resume", desc: "open my resume (PDF)" },
   { cmd: "contact", desc: "email, phone and LinkedIn" },
-  { cmd: "experience", desc: "internships, certification, education" },
+  { cmd: "experience", desc: "internships and leadership" },
+  { cmd: "education", desc: "degree and certification" },
   { cmd: "filter <tag>", desc: "show projects by tech, e.g. filter python", fill: "filter " },
   { cmd: "ls", desc: "explore my files (cd and cat work too)" },
   { cmd: "clear", desc: "clear the screen" },
@@ -488,6 +490,7 @@ export function Terminal() {
       case "about":
       case "skills":
       case "experience":
+      case "education":
       case "timeline": {
         const res = resolve(root, HOME, `~/${key === "timeline" ? "experience" : key}.txt`);
         if (res && !isDir(res.node)) printText(res.node.lines);

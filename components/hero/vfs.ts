@@ -42,7 +42,18 @@ export function buildFs(projects: ProjectSummary[]): VDir {
       "→ status: B.Tech CSE '27 (VIT) · open to backend & AI roles",
     ]),
     "skills.txt": file(skills.map((g) => `${g.group.toLowerCase()}: ${g.items.join(", ")}`)),
-    "experience.txt": file(timeline.map((t) => `${t.when.padEnd(14)} ${t.title}`)),
+    // Work and leadership only. The website's Journey section also mixes in education,
+    // certification and project summaries, so it is not reused here.
+    "experience.txt": file(
+      timeline
+        .filter((t) => /Intern ·|Point of Contact/.test(t.title))
+        .map((t) => `${t.when.padEnd(14)} ${t.title}`),
+    ),
+    "education.txt": file(
+      timeline
+        .filter((t) => /^B\.Tech|Certified/.test(t.title))
+        .map((t) => `${t.when.padEnd(14)} ${t.title}`),
+    ),
     "contact.txt": file(
       [
         site.email && `email:    ${site.email}`,
