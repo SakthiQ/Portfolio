@@ -26,7 +26,7 @@ export function Hero() {
     reduce ? {} : { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6, delay } };
 
   return (
-    <section className="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24">
+    <section className="relative overflow-clip pt-28 pb-16 sm:pt-36 sm:pb-24">
       <div className="bg-grid pointer-events-none absolute inset-0" aria-hidden />
       <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[780px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl" aria-hidden />
 

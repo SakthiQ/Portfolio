@@ -17,9 +17,9 @@ export function Contact() {
     <section id="contact" className="relative z-10 mx-auto max-w-6xl px-4 pb-32 pt-24 sm:px-6">
       <SectionHeading index="07" title="Let's talk" />
       <Reveal>
-        <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-8 sm:p-12">
+        <div className="relative overflow-clip rounded-2xl border border-line bg-surface p-6 sm:p-12">
           <div className="pointer-events-none absolute -bottom-32 -right-20 size-96 rounded-full bg-cyan/10 blur-3xl" aria-hidden />
-          <div className="relative grid gap-10 lg:grid-cols-2">
+          <div className="relative grid gap-10 lg:grid-cols-2 [&>*]:min-w-0">
             <div>
               <p className="text-2xl font-semibold tracking-tight text-fg sm:text-3xl">
                 Building something where correctness matters?
@@ -32,7 +32,7 @@ export function Contact() {
                 <MessageSquareText size={15} aria-hidden /> Ask the AI about me
               </OpenChatButton>
             </div>
-            <ul className="grid content-start gap-3">
+            <ul className="grid grid-cols-[minmax(0,1fr)] content-start gap-3">
               {links.map(({ href, label, value, Icon }) => (
                 <li key={label}>
                   <a
@@ -41,9 +41,9 @@ export function Contact() {
                     rel="noreferrer"
                     className="flex items-center gap-4 rounded-xl border border-line bg-bg/50 px-4 py-3 transition hover:border-accent/50"
                   >
-                    <Icon size={18} className="text-accent" aria-hidden />
+                    <Icon size={18} className="shrink-0 text-accent" aria-hidden />
                     <span className="font-mono text-xs text-faint">{label.toLowerCase()}</span>
-                    <span className="ml-auto truncate text-sm text-fg">{value}</span>
+                    <span className="ml-auto min-w-0 break-all text-right text-sm text-fg">{value}</span>
                   </a>
                 </li>
               ))}

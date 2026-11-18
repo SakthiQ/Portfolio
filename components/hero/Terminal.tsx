@@ -742,7 +742,7 @@ export function Terminal() {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-line bg-surface/90 shadow-2xl shadow-black/50 backdrop-blur"
+      className="overflow-clip rounded-xl border border-line bg-surface/90 shadow-2xl shadow-black/50 backdrop-blur"
       onClick={() => {
         if (!window.getSelection()?.toString()) inputRef.current?.focus({ preventScroll: true });
       }}

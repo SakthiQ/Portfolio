@@ -12,7 +12,7 @@ export function Featured({ projects }: { projects: ProjectSummary[] }) {
       <div className="space-y-8">
         {projects.map((p, i) => (
           <Reveal key={p.slug} delay={i * 0.05}>
-            <article className="group relative overflow-hidden rounded-2xl border border-line bg-surface p-6 transition hover:border-accent/50 sm:p-8">
+            <article className="group relative overflow-clip rounded-2xl border border-line bg-surface p-6 transition hover:border-accent/50 sm:p-8">
               <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-accent/5 blur-3xl transition group-hover:bg-accent/10" aria-hidden />
               <div className="relative grid gap-8 lg:grid-cols-[1.3fr_1fr]">
                 <div>

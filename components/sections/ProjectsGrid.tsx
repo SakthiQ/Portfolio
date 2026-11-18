@@ -43,7 +43,7 @@ export function ProjectsGrid({ projects, tags }: { projects: ProjectSummary[]; t
             key={t}
             onClick={() => setTag(t)}
             aria-pressed={tag === t}
-            className={`rounded-full border px-3 py-1 font-mono text-xs transition ${
+            className={`rounded-full border px-3 py-1.5 font-mono text-xs transition ${
               tag === t ? "border-accent bg-accent/15 text-accent" : "border-line text-muted hover:border-faint hover:text-fg"
             }`}
           >
